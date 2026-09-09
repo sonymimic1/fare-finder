@@ -1,27 +1,9 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthShell, AuthInput } from "./sign-in";
+import { AuthShell, AuthInput } from "@/components/auth-shell";
 
-export const Route = createFileRoute("/sign-up")({
-  head: () => ({
-    meta: [
-      { title: "註冊 — Flight Price Notifier" },
-      {
-        name: "description",
-        content: "建立 Flight Price Notifier 帳戶，開始追蹤機票價格。",
-      },
-      { property: "og:title", content: "註冊 — Flight Price Notifier" },
-      {
-        property: "og:description",
-        content: "建立 Flight Price Notifier 帳戶，開始追蹤機票價格。",
-      },
-    ],
-  }),
-  component: SignUpPage,
-});
-
-function SignUpPage() {
+export function SignUpPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,11 +24,13 @@ function SignUpPage() {
       setError(error.message);
       return;
     }
-    navigate({ to: "/app" });
+    navigate("/app");
   }
 
   return (
     <AuthShell title="建立帳戶" subtitle="Create your account">
+      <title>註冊 — Flight Price Notifier</title>
+      <meta name="description" content="建立 Flight Price Notifier 帳戶，開始追蹤機票價格。" />
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthInput
           id="email"

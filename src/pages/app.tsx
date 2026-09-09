@@ -1,28 +1,23 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import { Plane, LogOut, Construction } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthUser } from "@/components/require-auth";
 
-export const Route = createFileRoute("/_authenticated/app")({
-  component: AppShellPage,
-});
-
-function AppShellPage() {
+export function AppShellPage() {
   const navigate = useNavigate();
-  const { user } = Route.useRouteContext();
+  const user = useAuthUser();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    navigate({ to: "/", replace: true });
+    navigate("/", { replace: true });
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <title>Dashboard — Flight Price Notifier</title>
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 font-semibold tracking-tight"
-          >
+          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Plane className="h-4 w-4" aria-hidden />
             </span>
@@ -43,16 +38,12 @@ function AppShellPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <Construction className="h-7 w-7" aria-hidden />
           </div>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">
-            Hi {user.email}
-          </h1>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Hi {user.email}</h1>
           <p className="mt-4 text-muted-foreground">
-            你的航線追蹤儀表板即將上線 —
-            下一個里程碑會加上訂閱航線的功能。
+            你的航線追蹤儀表板即將上線 — 下一個里程碑會加上訂閱航線的功能。
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Your dashboard is coming soon. Route-subscription will be added in
-            the next milestone.
+            Your dashboard is coming soon. Route-subscription will be added in the next milestone.
           </p>
         </div>
       </main>

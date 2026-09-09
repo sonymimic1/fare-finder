@@ -1,28 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router";
 import { Radar, MailCheck, CalendarX, Plane } from "lucide-react";
 import { FadeIn } from "@/components/fade-in";
-
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Flight Price Notifier — 機票降價通知" },
-      {
-        name: "description",
-        content:
-          "設定航線與目標價，機票降價就通知你。Set a route and a target price — we email you when the fare drops.",
-      },
-      { property: "og:title", content: "Flight Price Notifier — 機票降價通知" },
-      {
-        property: "og:description",
-        content:
-          "Set a route and a target price — we email you when the fare drops.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: LandingPage,
-});
 
 const features = [
   {
@@ -45,9 +23,14 @@ const features = [
   },
 ];
 
-function LandingPage() {
+export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <title>Flight Price Notifier — 機票降價通知</title>
+      <meta
+        name="description"
+        content="設定航線與目標價，機票降價就通知你。Set a route and a target price — we email you when the fare drops."
+      />
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -88,8 +71,7 @@ function LandingPage() {
                 設定航線與目標價，機票降價就通知你
               </p>
               <p className="mt-3 text-base text-muted-foreground sm:text-lg">
-                Set a route and a target price — we email you when the fare
-                drops.
+                Set a route and a target price — we email you when the fare drops.
               </p>
             </FadeIn>
             <FadeIn delay={240}>
@@ -114,15 +96,9 @@ function LandingPage() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
                     <f.icon className="h-5 w-5" aria-hidden />
                   </div>
-                  <h2 className="mt-5 text-lg font-semibold text-card-foreground">
-                    {f.title}
-                  </h2>
-                  <p className="mt-1 text-sm font-medium text-primary">
-                    {f.subtitle}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    {f.body}
-                  </p>
+                  <h2 className="mt-5 text-lg font-semibold text-card-foreground">{f.title}</h2>
+                  <p className="mt-1 text-sm font-medium text-primary">{f.subtitle}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
                 </article>
               </FadeIn>
             ))}
