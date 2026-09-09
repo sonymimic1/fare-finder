@@ -7,6 +7,8 @@
 
 export type PlanName = "tokyo" | "seoul";
 
+export type SubscriptionStatus = "pending_payment" | "active" | "cancelled" | "expired";
+
 export type Subscription = {
   email: string;
   route: string;
@@ -17,12 +19,38 @@ export type Subscription = {
   currency: string;
   created_at: string;
   updated_at: string;
+  /** Absent on rows created before M2 — read it through `statusOf`. */
+  subscription_status?: SubscriptionStatus;
+  merchant_trade_no?: string;
+  /** ISO UTC timestamp. */
+  current_period_end?: string;
+  /** Human-facing `YYYY-MM-DD` rendering of `current_period_end`. */
+  current_period_end_date?: string;
 };
+
+/** M1 rows carry no status; the backend treats those as unpaid, so we do too. */
+export function statusOf(subscription: Subscription): SubscriptionStatus {
+  return subscription.subscription_status ?? "pending_payment";
+}
 
 export type SaveSubscriptionInput = {
   email: string;
   plan_name: PlanName;
   target_price: number;
+};
+
+/**
+ * `POST /subscribe` answers in one of two shapes:
+ * - `text/html` — an auto-submitting ECPay cashier form the browser must run
+ *   (new subscription, finishing a `pending_payment` one, or resubscribing).
+ * - `application/json` — the row was updated in place, no payment needed.
+ */
+export type SaveSubscriptionResult =
+  { kind: "checkout"; html: string } | { kind: "updated"; subscription: Subscription };
+
+export type CancelSubscriptionInput = {
+  email: string;
+  route: string;
 };
 
 function flightApiBaseUrl(): string {
@@ -45,19 +73,30 @@ function errorMessageFrom(body: unknown, status: number): string {
   return `Request failed (HTTP ${status}).`;
 }
 
+async function parseJsonBody(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    // Non-JSON body (e.g. an empty error response) — callers handle null.
+    return null;
+  }
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${flightApiBaseUrl()}${path}`, init);
-
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    // Non-JSON body (e.g. an empty error response) — handled below.
-  }
+  const body = await parseJsonBody(response);
 
   if (!response.ok) throw new Error(errorMessageFrom(body, response.status));
 
   return body as T;
+}
+
+function jsonPost(input: unknown): RequestInit {
+  return {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  };
 }
 
 export async function listSubscriptions(email: string): Promise<Subscription[]> {
@@ -67,11 +106,29 @@ export async function listSubscriptions(email: string): Promise<Subscription[]> 
   return data.subscriptions ?? [];
 }
 
-export async function saveSubscription(input: SaveSubscriptionInput): Promise<Subscription> {
-  const data = await requestJson<{ ok: boolean; subscription: Subscription }>("/subscribe", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
+export async function saveSubscription(
+  input: SaveSubscriptionInput,
+): Promise<SaveSubscriptionResult> {
+  const response = await fetch(`${flightApiBaseUrl()}/subscribe`, jsonPost(input));
+
+  // The cashier form is HTML — never hand it to `response.json()`.
+  if (response.ok && (response.headers.get("content-type") ?? "").includes("text/html")) {
+    return { kind: "checkout", html: await response.text() };
+  }
+
+  const body = await parseJsonBody(response);
+  if (!response.ok) throw new Error(errorMessageFrom(body, response.status));
+
+  const { subscription } = (body ?? {}) as { subscription?: Subscription };
+  if (!subscription) throw new Error("Unexpected response from /subscribe.");
+
+  return { kind: "updated", subscription };
+}
+
+export async function cancelSubscription(input: CancelSubscriptionInput): Promise<Subscription> {
+  const data = await requestJson<{ ok: boolean; subscription: Subscription }>(
+    "/cancel",
+    jsonPost(input),
+  );
   return data.subscription;
 }

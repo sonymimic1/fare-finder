@@ -1,12 +1,37 @@
-import { Link, useNavigate } from "react-router";
-import { Plane, LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { CircleAlert, CircleCheckBig, LogOut, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/components/require-auth";
 import { PlanCards } from "@/components/plan-cards";
 
+type PurchaseOutcome = "success" | "failed";
+
+function isPurchaseOutcome(value: string | null): value is PurchaseOutcome {
+  return value === "success" || value === "failed";
+}
+
 export function AppShellPage() {
   const navigate = useNavigate();
   const user = useAuthUser();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [purchase, setPurchase] = useState<PurchaseOutcome | null>(null);
+  // Bumping this remounts PlanCards, which re-runs its GET /subscriptions.
+  const [subscriptionsKey, setSubscriptionsKey] = useState(0);
+  const handledPurchase = useRef(false);
+
+  const purchaseParam = searchParams.get("purchase");
+
+  useEffect(() => {
+    if (handledPurchase.current || !isPurchaseOutcome(purchaseParam)) return;
+
+    handledPurchase.current = true;
+    setPurchase(purchaseParam);
+    setSubscriptionsKey((key) => key + 1);
+    // Keep the banner but drop the query string, so a reload/back does not
+    // replay the notice.
+    setSearchParams({}, { replace: true });
+  }, [purchaseParam, setSearchParams]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -44,9 +69,39 @@ export function AppShellPage() {
             Pick a route and set a target price — we email you when the fare drops below it.
           </p>
 
+          {purchase === "success" && (
+            <p
+              role="status"
+              className="mt-8 flex items-start gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300"
+            >
+              <CircleCheckBig className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                付款完成！訂閱已啟用，通知會寄到 {user.email}。
+                <span className="mt-0.5 block text-emerald-300/80">
+                  Payment complete — your subscription is active.
+                </span>
+              </span>
+            </p>
+          )}
+
+          {purchase === "failed" && (
+            <p
+              role="alert"
+              className="mt-8 flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+            >
+              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                付款未完成，訂閱尚未啟用。你可以在下方卡片再試一次。
+                <span className="mt-0.5 block opacity-80">
+                  Payment was not completed — you can try again below.
+                </span>
+              </span>
+            </p>
+          )}
+
           <div className="mt-8">
             {user.email ? (
-              <PlanCards email={user.email} />
+              <PlanCards key={subscriptionsKey} email={user.email} />
             ) : (
               <p role="alert" className="text-sm text-destructive">
                 你的帳號沒有 email，無法建立訂閱。Your account has no email address.

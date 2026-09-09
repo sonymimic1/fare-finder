@@ -80,12 +80,29 @@ def handler(event, _context):
 
     cheapest_twd = Decimal(str(tw["price"]))
     matched = 0
+    skipped = {"unpaid": 0, "expired": 0, "below_target": 0}
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     scan_kwargs = {"FilterExpression": Attr("route").eq(route)}
     while True:
         res = _table.scan(**scan_kwargs)
         for it in res.get("Items", []):
+            # M2 paywall gate: serve active, and cancelled rows still inside their paid period;
+            # lazily expire cancelled rows whose period has lapsed. pending_payment/expired/legacy never.
+            status = it.get("subscription_status")
+            period_end = str(it.get("current_period_end") or "")
+            if status == "cancelled" and period_end < now:
+                _table.update_item(Key={"email": it["email"], "route": route},
+                                   UpdateExpression="SET subscription_status = :x, updated_at = :n",
+                                   ExpressionAttributeValues={":x": "expired", ":n": now})
+                print(f"expired {it['email']} (cancelled, period ended {period_end})")
+                skipped["expired"] += 1
+                continue
+            if not (status == "active" or (status == "cancelled" and period_end >= now)):
+                skipped["unpaid"] += 1
+                continue
             tp = Decimal(str(it.get("target_price", 0)))
             if tp < cheapest_twd:
+                skipped["below_target"] += 1
                 continue
             body = {"email": it["email"], "route": route, "plan_name": it.get("plan_name"),
                     "target_price": int(tp),
@@ -101,5 +118,5 @@ def handler(event, _context):
             break
         scan_kwargs["ExclusiveStartKey"] = res["LastEvaluatedKey"]
 
-    print(f"{route}: matched={matched}")
-    return {"ok": True, "route": route, "month": month, "cheapest_twd": tw["price"], "matched": matched}
+    print(f"{route}: matched={matched} skipped={skipped}")
+    return {"ok": True, "route": route, "month": month, "cheapest_twd": tw["price"], "matched": matched, "skipped": skipped}

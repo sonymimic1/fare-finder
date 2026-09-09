@@ -14,7 +14,9 @@ ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/flight-lambda-role"
 BUILD="$(mktemp -d)"
 ZIP="$BUILD/$FN.zip"
 
+# EXTRA: space-separated files under aws/_shared to bundle alongside index.py (e.g. EXTRA="ecpay.py")
 ( cd "$ROOT/aws/$SRC" && zip -q -j "$ZIP" index.py )
+for f in ${EXTRA:-}; do ( cd "$ROOT/aws/_shared" && zip -q -j "$ZIP" "$f" ); done
 echo "zip: $(wc -c <"$ZIP") bytes, md5 $(md5 -q "$ZIP")"
 
 if aws lambda get-function --function-name "$FN" --region "$REGION" >/dev/null 2>&1; then
