@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router";
-import { Plane, LogOut, Construction } from "lucide-react";
+import { Plane, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/components/require-auth";
+import { PlanCards } from "@/components/plan-cards";
 
 export function AppShellPage() {
   const navigate = useNavigate();
@@ -33,18 +34,32 @@ export function AppShellPage() {
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
-        <div className="w-full max-w-md text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Construction className="h-7 w-7" aria-hidden />
+      <main className="flex-1 px-4 py-12 sm:px-6 sm:py-16">
+        <div className="mx-auto w-full max-w-4xl">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">航線訂閱</h1>
+          <p className="mt-3 text-muted-foreground">
+            選擇航線、設定目標價，票價低於目標就寄 email 通知你。
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick a route and set a target price — we email you when the fare drops below it.
+          </p>
+
+          <div className="mt-8">
+            {user.email ? (
+              <PlanCards email={user.email} />
+            ) : (
+              <p role="alert" className="text-sm text-destructive">
+                你的帳號沒有 email，無法建立訂閱。Your account has no email address.
+              </p>
+            )}
           </div>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Hi {user.email}</h1>
-          <p className="mt-4 text-muted-foreground">
-            你的航線追蹤儀表板即將上線 — 下一個里程碑會加上訂閱航線的功能。
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your dashboard is coming soon. Route-subscription will be added in the next milestone.
-          </p>
+
+          {user.email && (
+            <p className="mt-6 text-sm text-muted-foreground">
+              通知會寄到 / Alerts go to{" "}
+              <span className="font-medium text-foreground">{user.email}</span>
+            </p>
+          )}
         </div>
       </main>
     </div>
